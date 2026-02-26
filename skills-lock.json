@@ -1,0 +1,10 @@
+{
+  "version": 1,
+  "skills": {
+    "devsecops-expert": {
+      "source": "martinholovsky/claude-skills-generator",
+      "sourceType": "github",
+      "computedHash": "0e770b2394b93cd8189a910d92edfb3a5e2b40460c8c2ddb2e13d56dc3254523"
+    }
+  }
+}

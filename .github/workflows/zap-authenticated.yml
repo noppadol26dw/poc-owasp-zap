@@ -16,6 +16,11 @@
 
 name: ZAP Authenticated Scan
 
+permissions:
+  contents: read
+  actions: read
+  issues: write
+
 on:
   # Run on schedule (e.g., nightly after full scan)
   schedule:
@@ -106,21 +111,21 @@ jobs:
         with:
           name: zap-authenticated-report
           path: |
-            zap-auth-report.json
-            zap-auth-report.html
+            reports/zap_auth_baseline_report.json
+            reports/zap_auth_baseline_risk-confidence.html
           retention-days: 30
 
       - name: Check scan results
         if: always()
         run: |
-          if [[ -f zap-auth-report.json ]]; then
+          if [[ -f reports/zap_auth_baseline_report.json ]]; then
             echo "Scan completed. Report summary:"
             python3 << 'EOF'
           import json
           import sys
 
           try:
-              with open('zap-auth-report.json') as f:
+              with open('reports/zap_auth_baseline_report.json') as f:
                   data = json.load(f)
 
               risk_counts = {0: 0, 1: 0, 2: 0, 3: 0, 4: 0}

@@ -318,12 +318,17 @@ The `.gitignore` is configured to exclude these automatically.
 Validate your setup:
 
 ```bash
-# Run all tests
+# Run security gate tests (ZAP fail-on-high logic)
+./tests/security/test-zap-gate.sh
+
+# Auth setup check (secrets not in repo)
 ./tests/security/test-auth-setup.sh
 
-# Test specific script
+# Test baseline scan against a URL
 ./security/zap/run-baseline.sh https://example.com
 ```
+
+See [SECURITY.md](SECURITY.md) for security gates and checklist.
 
 ---
 

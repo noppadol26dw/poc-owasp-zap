@@ -5,6 +5,10 @@ on:
     - cron: '0 2 * * *'
   workflow_dispatch:
 
+permissions:
+  contents: read
+  actions: read
+
 jobs:
   zap-full:
     runs-on: ubuntu-latest
@@ -24,5 +28,5 @@ jobs:
         with:
           name: zap-full-report
           path: |
-            zap-full-report.json
-            zap-full-report.html
+            reports/zap_full_report.json
+            reports/zap_full_risk-confidence.html
