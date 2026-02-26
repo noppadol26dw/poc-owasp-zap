@@ -19,13 +19,21 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: Require STAGING_URL
+        run: |
+          if [[ -z "${{ vars.STAGING_URL }}" ]]; then
+            echo "::error::STAGING_URL is not set. Add it in Settings → Secrets and variables → Actions → Variables."
+            exit 1
+          fi
+          echo "Target: ${{ vars.STAGING_URL }}"
+
       - name: ZAP Baseline Scan
         run: |
           chmod +x security/zap/run-baseline.sh
           security/zap/run-baseline.sh
 
       - name: Upload ZAP report
-        if: always()
+        if: always() && hashFiles('reports/zap_baseline_report.json') != ''
         uses: actions/upload-artifact@v4
         with:
           name: zap-baseline-report

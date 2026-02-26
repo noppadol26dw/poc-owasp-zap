@@ -79,18 +79,20 @@ poc-owasp-zap/
 
 ## Project Roadmap
 
-### ✅ Completed Phases
-
 | Phase | Status | Description |
 |-------|--------|-------------|
 | **Phase 1** | ✅ Done | Baseline scan on PR/push - fails on HIGH/CRITICAL |
 | **Phase 2** | ✅ Done | Nightly full scan - reports only, no fail |
 | **Phase 3** | ✅ Done | Authenticated scan with form/API token auth |
+| **Phase 4** | 🔧 TODO | SARIF export for GitHub Code Scanning |
 | **Phase 5** | ✅ Done | ZAP API Daemon - on-demand scanning via REST API |
 
-### 🔧 Phase 4 - SARIF Export (TODO)
+### Active vs passive scan
 
-Export ZAP results as SARIF for GitHub Code Scanning integration.
+| Type | What it does | When we use it |
+|------|----------------|----------------|
+| **Passive** | Observes traffic and responses only; does not send attack payloads. Finds issues like missing headers, info leakage, passive SSL checks. | Baseline scan (Phase 1) – fast, safe for every PR. |
+| **Active** | Sends probes and attack payloads (e.g. SQL injection, XSS) to find vulnerabilities. | Full scan (Phase 2) and authenticated full – scheduled or on-demand, not every commit. |
 
 ---
 
