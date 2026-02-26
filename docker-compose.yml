@@ -1,0 +1,63 @@
+services:
+  # ZAP Daemon - runs continuously and accepts API calls
+  zap-daemon:
+    image: ${ZAP_IMAGE:-ghcr.io/zaproxy/zaproxy:stable}
+    container_name: zap-daemon
+    ports:
+      - "8080:8080"    # ZAP proxy port
+      - "8090:8090"    # ZAP API port
+    volumes:
+      - ./reports:/zap/wrk/reports:rw
+      - ./zap-session:/home/zap/.ZAP/session:rw
+    environment:
+      - ZAP_API_KEY=${ZAP_API_KEY:-changeme}
+      - STAGING_URL=${STAGING_URL:-}
+    command: >
+      zap.sh -daemon
+      -host 0.0.0.0
+      -port 8080
+      -config api.addrs.addr.name=.*
+      -config api.addrs.addr.regex=true
+      -config api.key=${ZAP_API_KEY:-changeme}
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+    networks:
+      - zap-network
+
+  # Optional: ZAP with authentication pre-configured
+  zap-auth-daemon:
+    image: ${ZAP_IMAGE:-ghcr.io/zaproxy/zaproxy:stable}
+    container_name: zap-auth-daemon
+    profiles: ["auth"]  # Only start when explicitly requested
+    ports:
+      - "8081:8080"    # Different port for auth instance
+      - "8091:8090"    # Different API port
+    volumes:
+      - ./reports:/zap/wrk/reports:rw
+      - ./zap-session:/home/zap/.ZAP/session:rw
+      - ./security/zap/scripts:/zap/scripts:ro
+    environment:
+      - ZAP_API_KEY=${ZAP_API_KEY:-changeme}
+      - STAGING_URL=${STAGING_URL:-}
+      - ZAP_AUTH_URL=${ZAP_AUTH_URL:-}
+      - ZAP_AUTH_USERNAME=${ZAP_AUTH_USERNAME:-}
+      - ZAP_AUTH_PASSWORD=${ZAP_AUTH_PASSWORD:-}
+      - ZAP_AUTH_METHOD=${ZAP_AUTH_METHOD:-form}
+    command: >
+      zap.sh -daemon
+      -host 0.0.0.0
+      -port 8080
+      -config api.addrs.addr.name=.*
+      -config api.addrs.addr.regex=true
+      -config api.key=${ZAP_API_KEY:-changeme}
+    networks:
+      - zap-network
+
+networks:
+  zap-network:
+    driver: bridge

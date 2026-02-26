@@ -1,0 +1,29 @@
+# OWASP ZAP baseline scan on push/PR. Set STAGING_URL in repo vars or env.
+name: ZAP Baseline Scan
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  zap-baseline:
+    runs-on: ubuntu-latest
+    env:
+      STAGING_URL: ${{ vars.STAGING_URL }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: ZAP Baseline Scan
+        run: |
+          chmod +x security/zap/run-baseline.sh
+          security/zap/run-baseline.sh
+
+      - name: Upload ZAP report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: zap-report
+          path: |
+            zap-report.json
+            zap-report.html

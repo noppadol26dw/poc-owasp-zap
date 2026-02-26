@@ -1,0 +1,183 @@
+# OWASP ZAP Authenticated Scan (Phase 3)
+# Scans protected pages after logging in via form-based or token authentication.
+#
+# Required Secrets (set in GitHub Settings > Secrets and Variables > Actions):
+#   ZAP_AUTH_URL       - Login URL (e.g., https://app.example.com/login)
+#   ZAP_AUTH_USERNAME  - Username for authentication
+#   ZAP_AUTH_PASSWORD  - Password for authentication
+#
+# Optional Secrets:
+#   ZAP_AUTH_TOKEN     - Pre-generated API token (if using token auth)
+#   ZAP_AUTH_METHOD    - 'form' or 'token' (default: form)
+#   ZAP_AUTH_HEADER    - Custom header name for token auth (default: Authorization)
+#
+# Required Variables:
+#   STAGING_URL        - Target URL to scan (set in Settings > Variables)
+
+name: ZAP Authenticated Scan
+
+on:
+  # Run on schedule (e.g., nightly after full scan)
+  schedule:
+    - cron: '0 2 * * *'  # 2 AM daily
+
+  # Allow manual trigger with auth method selection
+  workflow_dispatch:
+    inputs:
+      auth_method:
+        description: 'Authentication method'
+        required: true
+        default: 'form'
+        type: choice
+        options:
+          - form
+          - token
+      fail_on_high:
+        description: 'Fail on HIGH/CRITICAL findings'
+        required: true
+        default: true
+        type: boolean
+
+jobs:
+  zap-authenticated:
+    runs-on: ubuntu-latest
+    env:
+      STAGING_URL: ${{ vars.STAGING_URL }}
+      ZAP_AUTH_URL: ${{ secrets.ZAP_AUTH_URL }}
+      ZAP_AUTH_USERNAME: ${{ secrets.ZAP_AUTH_USERNAME }}
+      ZAP_AUTH_PASSWORD: ${{ secrets.ZAP_AUTH_PASSWORD }}
+      ZAP_AUTH_TOKEN: ${{ secrets.ZAP_AUTH_TOKEN }}
+      ZAP_AUTH_METHOD: ${{ github.event.inputs.auth_method || 'form' }}
+      ZAP_AUTH_HEADER: ${{ vars.ZAP_AUTH_HEADER || 'Authorization' }}
+      ZAP_AUTH_HEADER_PREFIX: ${{ vars.ZAP_AUTH_HEADER_PREFIX || 'Bearer' }}
+      ZAP_AUTH_FORM_FIELDS: ${{ vars.ZAP_AUTH_FORM_FIELDS || 'username,password' }}
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Validate authentication configuration
+        run: |
+          echo "Validating authentication configuration..."
+
+          # Check required variables
+          if [[ -z "$STAGING_URL" ]]; then
+            echo "ERROR: STAGING_URL variable is not set"
+            exit 1
+          fi
+
+          # Check authentication based on method
+          if [[ "$ZAP_AUTH_METHOD" == "form" ]]; then
+            if [[ -z "$ZAP_AUTH_URL" || -z "$ZAP_AUTH_USERNAME" || -z "$ZAP_AUTH_PASSWORD" ]]; then
+              echo "ERROR: Form authentication requires ZAP_AUTH_URL, ZAP_AUTH_USERNAME, and ZAP_AUTH_PASSWORD secrets"
+              exit 1
+            fi
+            echo "Authentication: Form-based login"
+            echo "  Login URL: $ZAP_AUTH_URL"
+            echo "  Username: $ZAP_AUTH_USERNAME"
+          elif [[ "$ZAP_AUTH_METHOD" == "token" ]]; then
+            if [[ -n "$ZAP_AUTH_TOKEN" ]]; then
+              echo "Authentication: Token-based (pre-generated)"
+            elif [[ -n "$ZAP_AUTH_URL" && -n "$ZAP_AUTH_USERNAME" && -n "$ZAP_AUTH_PASSWORD" ]]; then
+              echo "Authentication: Token-based (fetch from endpoint)"
+              echo "  Token URL: $ZAP_AUTH_URL"
+            else
+              echo "ERROR: Token authentication requires either ZAP_AUTH_TOKEN or (ZAP_AUTH_URL + ZAP_AUTH_USERNAME + ZAP_AUTH_PASSWORD)"
+              exit 1
+            fi
+          fi
+
+          echo "Target: $STAGING_URL"
+          echo "Auth Method: $ZAP_AUTH_METHOD"
+
+      - name: Set up Docker
+        uses: docker/setup-buildx-action@v3
+
+      - name: Run ZAP Authenticated Baseline Scan
+        id: zap_scan
+        continue-on-error: ${{ !github.event.inputs.fail_on_high }}
+        run: |
+          chmod +x security/zap/run-authenticated-baseline.sh
+          security/zap/run-authenticated-baseline.sh
+
+      - name: Upload ZAP Report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: zap-authenticated-report
+          path: |
+            zap-auth-report.json
+            zap-auth-report.html
+          retention-days: 30
+
+      - name: Check scan results
+        if: always()
+        run: |
+          if [[ -f zap-auth-report.json ]]; then
+            echo "Scan completed. Report summary:"
+            python3 << 'EOF'
+          import json
+          import sys
+
+          try:
+              with open('zap-auth-report.json') as f:
+                  data = json.load(f)
+
+              risk_counts = {0: 0, 1: 0, 2: 0, 3: 0, 4: 0}
+              risk_names = {0: 'Informational', 1: 'Low', 2: 'Medium', 3: 'High', 4: 'Critical'}
+
+              for site in data.get('site', []):
+                  for alert in site.get('alerts', []):
+                      risk = alert.get('riskcode', 0)
+                      risk_counts[risk] = risk_counts.get(risk, 0) + 1
+
+              print("\n=== ZAP Authenticated Scan Results ===")
+              for level in [4, 3, 2, 1, 0]:
+                  count = risk_counts.get(level, 0)
+                  if count > 0:
+                      print(f"  {risk_names[level]}: {count}")
+
+              if risk_counts[3] > 0 or risk_counts[4] > 0:
+                  print(f"\n⚠️  Found {risk_counts[3]} HIGH and {risk_counts[4]} CRITICAL issues")
+                  sys.exit(1)
+              else:
+                  print("\n✅ No HIGH or CRITICAL issues found")
+          except Exception as e:
+              print(f"Error parsing report: {e}")
+          EOF
+          else
+            echo "No report file found"
+          fi
+
+      - name: Create GitHub Issue for critical findings
+        if: failure() && github.event_name == 'schedule'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const title = `🔒 ZAP Authenticated Scan: Security Issues Found - ${new Date().toISOString().split('T')[0]}`;
+            const body = `## ZAP Authenticated Scan Results
+
+            Scan completed on: ${new Date().toISOString()}
+            Target: ${process.env.STAGING_URL}
+            Authentication: ${process.env.ZAP_AUTH_METHOD}
+
+            ### Action Required
+            The authenticated scan found HIGH or CRITICAL security issues in protected areas of the application.
+
+            ### Next Steps
+            1. Download the ZAP report from the workflow artifacts
+            2. Review findings in the HTML report
+            3. Prioritize fixing CRITICAL issues first
+            4. Re-run the scan after fixes
+
+            ### Workflow Run
+            https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}
+            `;
+
+            github.rest.issues.create({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              title: title,
+              body: body,
+              labels: ['security', 'zap', 'authenticated-scan']
+            });

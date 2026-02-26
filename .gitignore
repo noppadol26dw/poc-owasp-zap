@@ -1,0 +1,134 @@
+# Security: Sensitive data and environment files
+.env
+.env.*
+.env.local
+.env.development
+.env.production
+.env.test
+**/.env
+**/.env.*
+*.pem
+*.key
+*.crt
+*.p12
+*.pfx
+secrets/
+secrets.*
+credentials/
+credentials.*
+*.secret
+*.token
+
+# ZAP report outputs (generated in CI)
+# All ZAP report files in any folder (HTML, JSON, XML, PDF, etc.)
+zap*.html
+zap*.json
+zap*.xml
+zap*.pdf
+zap*.md
+**/zap*.html
+**/zap*.json
+**/zap*.xml
+**/zap*.pdf
+**/zap*.md
+
+# Specific report names for clarity (any folder)
+zap-report.json
+zap-report.html
+zap-full-report.json
+zap-full-report.html
+zap-auth-report.json
+zap-auth-report.html
+zap-auth-full-report.json
+zap-auth-full-report.html
+zap-auth-risk-confidence.html
+zap-auth-full-risk-confidence.html
+zap_baseline_report.json
+zap_baseline_report.html
+zap_baseline_risk-confidence.html
+zap_full_report.json
+zap_full_report.html
+zap_full_risk-confidence.html
+zap_auth_baseline_report.json
+zap_auth_baseline_report.html
+zap_auth_baseline_risk-confidence.html
+zap_auth_full_report.json
+zap_auth_full_report.html
+zap_auth_full_risk-confidence.html
+**/zap-report.json
+**/zap-report.html
+**/zap-full-report.json
+**/zap-full-report.html
+**/zap-auth-report.json
+**/zap-auth-report.html
+**/zap-auth-full-report.json
+**/zap-auth-full-report.html
+**/zap-auth-risk-confidence.html
+**/zap-auth-full-risk-confidence.html
+**/zap_baseline_report.json
+**/zap_baseline_report.html
+**/zap_baseline_risk-confidence.html
+**/zap_full_report.json
+**/zap_full_report.html
+**/zap_full_risk-confidence.html
+**/zap_auth_baseline_report.json
+**/zap_auth_baseline_report.html
+**/zap_auth_baseline_risk-confidence.html
+**/zap_auth_full_report.json
+**/zap_auth_full_report.html
+**/zap_auth_full_risk-confidence.html
+
+# ZAP output logs in any folder
+zap.out
+zap-auth.out
+zap-auth-test.log
+zap-auth-full.out
+**/zap.out
+**/zap-auth.out
+**/zap-auth-test.log
+**/zap-auth-full.out
+
+# ZAP reports directory (generated at runtime)
+reports/
+**/reports/
+
+# Archive (old unused files)
+archive/
+
+# ZAP automation plans (generated at runtime)
+security/zap/zap-baseline-plan.yaml
+security/zap/zap-full-plan.yaml
+security/zap/zap-authenticated-plan.yaml
+security/zap/zap-auth-full-plan.yaml
+security/zap/scripts/zap_auth_setup.py
+
+# OS files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+Thumbs.db
+Desktop.ini
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+*.sublime-*
+*.code-workspace
+
+# Logs and databases
+*.log
+*.sql
+*.sqlite
+*.sqlite3
+
+# Temporary files
+tmp/
+temp/
+*.tmp
+*.temp
+*.cache

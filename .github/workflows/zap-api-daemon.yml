@@ -1,0 +1,171 @@
+# Phase 5 - ZAP API Daemon On-Demand Scan
+# Runs ZAP as a service and triggers scans via API
+# Can be triggered manually or after deployment
+
+name: ZAP API Daemon Scan
+
+on:
+  # Manual trigger
+  workflow_dispatch:
+    inputs:
+      target_url:
+        description: 'Target URL to scan'
+        required: true
+        default: 'https://staging.example.com'
+      scan_type:
+        description: 'Scan type'
+        required: true
+        default: 'baseline'
+        type: choice
+        options:
+          - baseline
+          - full
+      fail_on_high:
+        description: 'Fail on HIGH/CRITICAL findings'
+        required: true
+        default: true
+        type: boolean
+
+  # Post-deploy trigger (optional)
+  # workflow_run:
+  #   workflows: ["Deploy to Staging"]
+  #   types: [completed]
+  #   branches: [main]
+
+jobs:
+  zap-api-scan:
+    runs-on: ubuntu-latest
+    env:
+      ZAP_API_KEY: ${{ secrets.ZAP_API_KEY || 'changeme' }}
+      STAGING_URL: ${{ github.event.inputs.target_url || vars.STAGING_URL }}
+      SCAN_TYPE: ${{ github.event.inputs.scan_type || 'baseline' }}
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Start ZAP Daemon
+        run: |
+          chmod +x security/zap/zap-daemon.sh
+          ./security/zap/zap-daemon.sh start
+          
+          # Wait for ZAP to be fully ready
+          sleep 30
+          
+          # Verify it's running
+          ./security/zap/zap-daemon.sh status
+
+      - name: Run ZAP API Scan
+        id: zap_scan
+        continue-on-error: ${{ github.event.inputs.fail_on_high == false }}
+        run: |
+          chmod +x security/zap/run-zap-api-scan.sh
+          chmod +x security/zap/run-zap-api-scan-full.sh
+          
+          if [[ "$SCAN_TYPE" == "full" ]]; then
+            echo "Running FULL scan via API..."
+            ./security/zap/run-zap-api-scan-full.sh "$STAGING_URL"
+          else
+            echo "Running BASELINE scan via API..."
+            ./security/zap/run-zap-api-scan.sh "$STAGING_URL"
+          fi
+
+      - name: Upload ZAP Reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: zap-api-reports
+          path: |
+            reports/zap_api_scan_*
+          retention-days: 30
+
+      - name: Comment PR (if applicable)
+        if: github.event_name == 'pull_request'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            const path = require('path');
+            
+            // Find latest report
+            const reportsDir = './reports';
+            const files = fs.readdirSync(reportsDir)
+              .filter(f => f.startsWith('zap_api_scan_') && f.endsWith('.json'))
+              .sort()
+              .reverse();
+            
+            if (files.length === 0) {
+              console.log('No reports found');
+              return;
+            }
+            
+            const reportPath = path.join(reportsDir, files[0]);
+            const report = JSON.parse(fs.readFileSync(reportPath, 'utf8'));
+            
+            // Count findings by risk
+            let high = 0, medium = 0, low = 0;
+            const sites = report.site || [];
+            sites.forEach(site => {
+              (site.alerts || []).forEach(alert => {
+                const risk = alert.riskcode;
+                if (risk == 3) high++;
+                else if (risk == 2) medium++;
+                else if (risk == 1) low++;
+              });
+            });
+            
+            const body = `## 🔒 ZAP API Scan Results
+            
+            **Target:** ${process.env.STAGING_URL}
+            **Scan Type:** ${process.env.SCAN_TYPE}
+            
+            | Risk Level | Count |
+            |------------|-------|
+            | 🔴 High | ${high} |
+            | 🟠 Medium | ${medium} |
+            | 🟡 Low | ${low} |
+            
+            **Status:** ${high > 0 ? '❌ FAILED - High severity issues found' : '✅ PASSED'}
+            
+            Reports available in workflow artifacts.
+            `;
+            
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: body
+            });
+
+      - name: Stop ZAP Daemon
+        if: always()
+        run: |
+          ./security/zap/zap-daemon.sh stop
+
+      - name: Create Issue for Critical Findings
+        if: failure() && github.event_name == 'schedule'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const title = `🚨 ZAP API Scan: Security Issues Found - ${new Date().toISOString().split('T')[0]}`;
+            const body = `## ZAP API Daemon Scan Results
+            
+            Scan completed with HIGH/CRITICAL findings.
+            
+            **Target:** ${process.env.STAGING_URL}
+            **Workflow Run:** https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}
+            
+            ### Next Steps
+            1. Download the ZAP report from workflow artifacts
+            2. Review findings in the HTML report
+            3. Address HIGH severity issues immediately
+            4. Schedule a re-scan after fixes
+            `;
+            
+            github.rest.issues.create({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              title: title,
+              body: body,
+              labels: ['security', 'zap', 'api-scan']
+            });
