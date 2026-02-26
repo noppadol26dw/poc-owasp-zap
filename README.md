@@ -334,17 +334,6 @@ See [SECURITY.md](SECURITY.md) for security gates and checklist.
 
 ---
 
-## Archive
-
-Old Python-based authentication scripts in `archive/` (gitignored):
-- `form-auth.py` - Old form auth (replaced by YAML automation plans)
-- `api-token-auth.py` - Old token auth (replaced by YAML automation plans)
-- `authenticated.context` - Old ZAP context file
-
-Kept for reference but not used by current implementation. The `archive/` directory is excluded from version control.
-
----
-
 ## TODO / Future Enhancements
 
 | Feature | Priority | Phase |
