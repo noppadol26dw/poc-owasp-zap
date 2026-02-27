@@ -1,6 +1,7 @@
 # Phase 5 - ZAP API Daemon On-Demand Scan
 # Runs ZAP as a service and triggers scans via API
 # Can be triggered manually or after deployment
+# DISABLED - Re-enable by uncommenting the 'on:' section below
 
 name: ZAP API Daemon Scan
 
@@ -9,9 +10,11 @@ permissions:
   actions: read
   issues: write
 
-on:
-  # Manual trigger
-  workflow_dispatch:
+# on:
+#   # Manual trigger
+#   workflow_dispatch:
+
+on: []  # Disabled - no triggers
     inputs:
       target_url:
         description: 'Target URL to scan'
