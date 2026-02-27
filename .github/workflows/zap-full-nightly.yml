@@ -1,32 +1,32 @@
-# OWASP ZAP full scan on a schedule (Phase 2). Advisory – does not fail the workflow.
-name: ZAP Full Scan (Nightly)
-on:
-  schedule:
-    - cron: '0 2 * * *'
-  workflow_dispatch:
+# # OWASP ZAP full scan on a schedule (Phase 2). Advisory – does not fail the workflow.
+# name: ZAP Full Scan (Nightly)
+# on:
+#   schedule:
+#     - cron: '0 2 * * *'
+#   workflow_dispatch:
 
-permissions:
-  contents: read
-  actions: read
+# permissions:
+#   contents: read
+#   actions: read
 
-jobs:
-  zap-full:
-    runs-on: ubuntu-latest
-    env:
-      STAGING_URL: ${{ vars.STAGING_URL }}
-    steps:
-      - uses: actions/checkout@v4
+# jobs:
+#   zap-full:
+#     runs-on: ubuntu-latest
+#     env:
+#       STAGING_URL: ${{ vars.STAGING_URL }}
+#     steps:
+#       - uses: actions/checkout@v4
 
-      - name: ZAP Full Scan
-        run: |
-          chmod +x security/zap/run-full.sh
-          security/zap/run-full.sh
+#       - name: ZAP Full Scan
+#         run: |
+#           chmod +x security/zap/run-full.sh
+#           security/zap/run-full.sh
 
-      - name: Upload ZAP full report
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: zap-full-report
-          path: |
-            reports/zap_full_report.json
-            reports/zap_full_risk-confidence.html
+#       - name: Upload ZAP full report
+#         if: always()
+#         uses: actions/upload-artifact@v4
+#         with:
+#           name: zap-full-report
+#           path: |
+#             reports/zap_full_report.json
+#             reports/zap_full_risk-confidence.html
