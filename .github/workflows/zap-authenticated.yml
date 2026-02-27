@@ -21,17 +21,13 @@ permissions:
   actions: read
   issues: write
 
-# Temporarily disabled - re-enable by uncommenting below
-# on:
-#   # Run on schedule (e.g., nightly after full scan)
-#   schedule:
-#     - cron: '0 2 * * *'  # 2 AM daily
-#
-#   # Allow manual trigger with auth method selection
-#   workflow_dispatch:
+on:
+  # Run on schedule (e.g., nightly after full scan)
+  schedule:
+    - cron: '0 2 * * *'  # 2 AM daily
 
-# Disabled - no triggers
-on: []
+  # Allow manual trigger with auth method selection
+  workflow_dispatch:
     inputs:
       auth_method:
         description: 'Authentication method'
@@ -102,9 +98,6 @@ jobs:
       - name: Set up Docker
         uses: docker/setup-buildx-action@v3
 
-      - name: Create reports directory
-        run: mkdir -p reports
-
       - name: Run ZAP Authenticated Baseline Scan
         id: zap_scan
         continue-on-error: ${{ !github.event.inputs.fail_on_high }}
@@ -112,30 +105,14 @@ jobs:
           chmod +x security/zap/run-authenticated-baseline.sh
           security/zap/run-authenticated-baseline.sh
 
-      - name: Debug - List generated files
-        if: always()
-        run: |
-          echo "=== Listing reports directory ==="
-          ls -la reports/ 2>/dev/null || echo "reports/ directory not found"
-
-          echo ""
-          echo "=== Listing root directory for zap files ==="
-          ls -la zap* 2>/dev/null || echo "No zap files in root"
-
-          echo ""
-          echo "=== ZAP output log (last 100 lines) ==="
-          tail -100 zap-auth.out 2>/dev/null || echo "No zap-auth.out file"
-
       - name: Upload ZAP Report
         if: always()
         uses: actions/upload-artifact@v4
         with:
           name: zap-authenticated-report
           path: |
-            reports/zap_auth_baseline_report.*
-            reports/zap_auth_baseline_risk-confidence.*
-            zap-auth.out
-          if-no-files-found: warn
+            reports/zap_auth_baseline_report.json
+            reports/zap_auth_baseline_risk-confidence.html
           retention-days: 30
 
       - name: Check scan results

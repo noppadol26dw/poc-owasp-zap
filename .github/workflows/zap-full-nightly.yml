@@ -1,12 +1,9 @@
 # OWASP ZAP full scan on a schedule (Phase 2). Advisory – does not fail the workflow.
-# DISABLED - Re-enable by uncommenting the 'on:' section below
 name: ZAP Full Scan (Nightly)
-# on:
-#   schedule:
-#     - cron: '0 2 * * *'
-#   workflow_dispatch:
-
-on: []  # Disabled - no triggers
+on:
+  schedule:
+    - cron: '0 2 * * *'
+  workflow_dispatch:
 
 permissions:
   contents: read

@@ -1,14 +1,11 @@
 # OWASP ZAP baseline scan on push/PR. Set STAGING_URL in repo vars or env.
 # Security gate: fails on HIGH/CRITICAL (shift-left DAST).
-# DISABLED - Re-enable by uncommenting the 'on:' section below
 name: ZAP Baseline Scan
-# on:
-#   push:
-#     branches: [main]
-#   pull_request:
-#     branches: [main]
-
-on: []  # Disabled - no triggers
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
 
 permissions:
   contents: read
